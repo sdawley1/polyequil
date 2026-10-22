@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "polyequil"
+version = "0.1.0"
+description = "Equilibration diagnostics for simulated polymer melts"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [
+  {name = "Andrea Aude"},
+  {name = "Sam Dawley", email = "sd2402@princeton.edu"},
+  {name = "Hong-Ye Wang"},
+]
+dependencies = [
+  "h5py>=3.10",
+  "numpy>=2.0",
+  "threadpoolctl>=3.0",
+]
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.100",
+  "mypy>=1.10",
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/polyequil"]
+
+# ============================================================
+# ruff
+# ============================================================
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "N", "D", "ANN", "NPY", "PT", "RUF", "EXE"]
+ignore = [
+  "D203",    # one blank line before class docstring (conflicts with D211)
+  "D213",    # multi-line summary on second line (conflicts with D212)
+  "ANN401",  # Any is legitimate for metadata trees and payloads
+  "D105",    # __post_init__ / __exit__ need no docstring
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "ANN", "PT018"]
+"src/**" = ["PT"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["polyequil"]
+
+# ============================================================
+# mypy
+# ============================================================
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+files = ["src/polyequil", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["h5py", "h5py.*", "threadpoolctl"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+check_untyped_defs = false
+
+# ============================================================
+# pytest
+# ============================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow and not gpu and not lammps' --strict-markers"
+markers = [
+  "slow: takes more than ~10 s",
+  "gpu: requires a CUDA GPU",
+  "lammps: requires a LAMMPS executable",
+]

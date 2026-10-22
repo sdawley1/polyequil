@@ -1,8 +1,9 @@
 # Coding style
 
-Binding for all Python in `src/polyequil/`, `tests/`, and `scripts/`, except
-`src/polyequil/_vendor/` (verbatim upstream code, never edited). Mechanical
-rules are enforced by `ruff` and `mypy` (§6); the rest is enforced by review.
+Binding for all Python in `src/polyequil/`, `tests/`, and `scripts/`.
+Mechanical rules are enforced by `ruff` and `mypy` (§6); the rest is enforced
+by review. Code adapted from heteromorph names its source file in the module
+docstring.
 
 ## 1. File header
 
@@ -72,15 +73,14 @@ import numpy as np
 from numpy.typing import NDArray
 
 # ----- local -----
-from polyequil._vendor.heteromorph.observables import ObservableResult
-from polyequil.conventions import S_Q_NORMALIZATION
+from polyequil.conventions import SCHEMA
+from polyequil.results import ObservableResult
 ```
 
 - Built-in generics and `|` unions: `list[float]`, `dict[str, int]`,
   `tuple[int, ...]`, `NDArray[np.float64] | None`. Abstract containers come
   from `collections.abc`, not `typing`.
-- Absolute imports in `polyequil` code; the vendored package keeps its own
-  relative imports.
+- Absolute imports (`from polyequil.box import Box`).
 - No wildcard imports. Public names are listed in each package's `__all__`.
 
 ## 4. Names, types, docstrings
@@ -93,7 +93,10 @@ from polyequil.conventions import S_Q_NORMALIZATION
   `NDArray[np.float64]` (or the exact dtype); document shapes in the
   docstring, e.g. `(n_frames, n_beads, 3)`.
 - Data types are `@dataclass(frozen=True, slots=True)`, validated in
-  `__post_init__`, matching the vendored `heteromorph` types they extend.
+  `__post_init__` (use `polyequil._arrays.frozen_array` for array fields),
+  with `eq=False` plus an explicit `__eq__` when fields are arrays, and a
+  `__reduce__` that rebuilds through the constructor so arrays stay
+  read-only across process boundaries.
 - NumPy-style docstrings. One line when the function has at most two
   parameters and an obvious return; otherwise a summary line, a blank line,
   and `Parameters`, `Returns`, and `Raises` sections. Give units (LJ reduced
@@ -144,28 +147,33 @@ def msid(
    Non-trivial functions carry at least two such checks.
 6. Minimal scope: no mutable module-level state beyond constants; no global
    random state. Randomness comes from an injected
-   `numpy.random.Generator` (the vendored `Ensemble` supplies one per
-   realization).
+   `numpy.random.Generator` (`TrajectoryEnsemble` supplies one per task).
+   The one sanctioned cache is the bounded per-process header cache in
+   `polyequil.trajectory` (`functools.lru_cache`, keyed on file mtime).
 7. Check return values and `None` before use.
 8. No `exec`, `eval`, metaclasses, or monkey-patching.
 9. Zero warnings under `ruff` and `mypy --strict` from the first commit.
 
-## 6. Tooling contract (WP0 implements it in `pyproject.toml`)
+## 6. Tooling contract (implemented in `pyproject.toml`)
 
-- Build with `uv`; Python `>=3.11`; runtime dependencies NumPy `>=2`,
-  SciPy `>=1.13`, `h5py`; optional extra `cuda` (CuPy); dev group:
-  `pytest`, `hypothesis`, `ruff`, `mypy`, `mkdocs-material`.
+- Build with `uv` (hatchling backend); Python `>=3.11`; runtime
+  dependencies NumPy `>=2`, `h5py`, `threadpoolctl`; SciPy and a `cuda`
+  extra (CuPy) are added when first used; dev group: `pytest`,
+  `hypothesis`, `ruff`, `mypy`. `uv.lock` is committed; CI uses
+  `uv sync --locked`.
 - `ruff`: `line-length = 88`, `target-version = "py311"`, rule sets
   `E, W, F, I, UP, B, SIM, N, D, ANN, NPY, PT, RUF, EXE`, pydocstyle
-  convention `numpy`; `D` and `ANN` relaxed under `tests/`;
-  `extend-exclude = ["src/polyequil/_vendor"]`.
-- `mypy`: `strict = true`; `_vendor` excluded from checking but importable
-  (`follow_imports = "silent"`).
+  convention `numpy` (D105, D203, D213, ANN401 ignored); `D`, `ANN`, and
+  `PT018` relaxed under `tests/`; `PT` off under `src/`; Markdown excluded.
+- `mypy`: `strict = true` over `src/` and `tests/`; test bodies of untyped
+  test functions are not checked (`check_untyped_defs = false` for
+  `tests.*`).
 - `pytest`: markers `slow`, `gpu`, `lammps`; default
   `addopts = "-m 'not slow and not gpu and not lammps'"`; `.hypothesis/` in
   `.gitignore`.
 - CI (GitHub Actions): `ruff format --check`, `ruff check`, `mypy`, the
-  default `pytest` run with `--hypothesis-profile=ci`, and the docs build.
+  default `pytest` run with `--hypothesis-profile=ci`, on Ubuntu (Python
+  3.11–3.13) and macOS (spawn start method).
 
 ## 7. Scripts and `__main__`
 
@@ -178,62 +186,8 @@ registered under `[project.scripts]`.
 
 ## 8. Template
 
-```python
-"""
-Radius of gyration of every chain in one frame.
-
-Uses unwrapped positions from `ChainConfiguration.unwrapped`; LJ units.
-
-Author Name
-MM/YYYY
-"""
-
-# ============================================================
-# IMPORTS
-# ============================================================
-
-# ----- third party -----
-import numpy as np
-from numpy.typing import NDArray
-
-# ----- local -----
-from polyequil._vendor.heteromorph.errors import ValidationError
-from polyequil._vendor.heteromorph.observables import ObservableResult
-from polyequil.topology import ChainConfiguration
-
-# ============================================================
-# PUBLIC API
-# ============================================================
-
-
-def radius_of_gyration(
-    configuration: ChainConfiguration, *, threads: int = 1
-) -> ObservableResult:
-    """Return the mean squared radius of gyration over chains, in sigma^2."""
-    if threads < 1:
-        raise ValidationError(f"threads must be >= 1, got {threads}")
-    rg2 = _per_chain_rg2(configuration.unwrapped(), configuration.topology.chain_id)
-    return ObservableResult(values=np.asarray(rg2.mean()))
-
-
-# ============================================================
-# PRIVATE HELPERS
-# ============================================================
-
-
-def _per_chain_rg2(
-    positions: NDArray[np.float64], chain_id: NDArray[np.int64]
-) -> NDArray[np.float64]:
-    """Return R_g^2 of each chain from unwrapped positions of shape (n, 3)."""
-    assert positions.shape[0] == chain_id.shape[0], "one chain id per bead"
-    counts = np.bincount(chain_id).astype(np.float64)
-    assert np.all(counts > 0), "chain ids must be contiguous from zero"
-    centres = np.stack(
-        [np.bincount(chain_id, weights=positions[:, k]) for k in range(3)], axis=1
-    ) / counts[:, None]
-    squared = np.sum((positions - centres[chain_id]) ** 2, axis=1)
-    return np.bincount(chain_id, weights=squared) / counts
-```
-
-The names `ChainConfiguration`, `topology.chain_id`, and `unwrapped()` follow
-`docs/design.md` §5.2; the WP0 stubs are authoritative if they differ.
+`src/polyequil/observables/chain.py` (radius of gyration) is the reference
+example of an observable module: header, banners, grouped imports, a public
+observable with the `(item, *, threads=1, **params) -> ObservableResult`
+contract and a `convention`, and a validated private-style helper.
+`src/polyequil/box.py` is the reference example of a frozen data type.

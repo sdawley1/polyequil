@@ -14,9 +14,9 @@ check against, and how defects are logged.
 | I/O, LAMMPS input generation, SLURM glue | Example tests (round trips, golden snippets) |
 
 Tests mirror the source layout: `src/polyequil/topology.py` →
-`tests/test_topology.py`. Upstream `heteromorph` tests live under
-`tests/vendor/` and must keep passing; do not edit them except to rewrite
-imports during a re-sync.
+`tests/test_topology.py`. Behaviours ported from heteromorph's test suites
+(accumulators, execution, ensemble) are pinned in the corresponding
+`tests/test_*.py` files; keep them passing.
 
 ## 2. Workflow
 
@@ -47,7 +47,8 @@ Prefer these over "looks right". Shared builders for each live in
 | T8 | Non-interacting rods in the aligning field | $\langle P_2\rangle = \beta h/5 + O(h^2)$, so the orientational index is 0 |
 
 Other independent references: a brute-force double loop for anything
-vectorized, the vendored `heteromorph` routines for $S(q)$ and $g(r)$, and
+vectorized, heteromorph's routines for $S(q)$ and $g(r)$ (run as an
+external oracle, never imported by the package), and
 the CPU backend for any GPU kernel. Statistical tests (T1, T5, T6, T7) use a
 fixed seed and a tolerance of several standard errors computed from the
 sample size, never a hand-tuned constant.
@@ -96,7 +97,9 @@ from hypothesis import HealthCheck, settings
 settings.register_profile("dev", max_examples=100)
 settings.register_profile("ci", max_examples=300, derandomize=True, print_blob=True)
 settings.register_profile(
-    "thorough", max_examples=5000, deadline=None,
+    "thorough",
+    max_examples=5000,
+    deadline=None,
     suppress_health_check=[HealthCheck.too_slow],
 )
 settings.load_profile("dev")
@@ -152,9 +155,9 @@ IDs are sequential and never reused; entries are updated, never deleted.
 
 Regression tests assert on the exact repro input and at least one nearby
 edge of the same failure, compare to an independent reference with an
-explicit tolerance, and cite the defect ID in the docstring. A defect in
-`src/polyequil/_vendor/` is logged here and reported to the maintainer; it is
-not fixed in place.
+explicit tolerance, and cite the defect ID in the docstring. When the defect
+sits in code ported from heteromorph, note in the entry whether heteromorph
+has the same defect, so the maintainer can fix it there too.
 
 List every defect ID you logged, with its status, under **Defects logged** in
 your final report.
