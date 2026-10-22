@@ -31,6 +31,7 @@ src/polyequil/                 the package
 src/polyequil/_vendor/heteromorph/   vendored upstream code — READ-ONLY (§3)
 tests/                         pytest suite; mirrors src/ layout
 docs/                          design doc, dev guides, MkDocs site
+trajectories/ex/               small reference KG trajectories (HDF5) — READ-ONLY
 DEFECTS.md                     defect log (§6)
 ```
 
@@ -68,7 +69,9 @@ Breaking any of these is a defect, whoever wrote the code.
    placeholder (zero, empty array, `None`) for an undefined result. NaN may
    propagate only where the docstring says so.
 6. **Never commit data**: trajectories, HDF5 files, LAMMPS dumps, or
-   generated figures. Tests build small inputs in code.
+   generated figures. Tests build small inputs in code. The one exception is
+   the maintainer-curated reference set in `trajectories/ex/` (see its
+   README): read it, never modify or add to it.
 7. **Never push to `main`** or rewrite shared history.
 
 ## 4. Coding style (summary — full rules in `docs/dev/style.md`)
