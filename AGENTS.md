@@ -28,7 +28,7 @@ both beat feature-rich.
 
 ```
 src/polyequil/                 the package
-src/polyequil/_vendor/heteromorph/   vendored upstream code — READ-ONLY (§3)
+src/polyequil/io/              HDF5 storage + LAMMPS readers/converter
 tests/                         pytest suite; mirrors src/ layout
 docs/                          design doc, dev guides, MkDocs site
 trajectories/ex/               small reference KG trajectories (HDF5) — READ-ONLY
@@ -36,27 +36,26 @@ DEFECTS.md                     defect log (§6)
 ```
 
 ```bash
-uv sync --all-extras                       # set up the environment
+uv sync                                    # set up the environment
 uv run pytest                              # fast suite (default markers skip slow/gpu/lammps)
 uv run pytest -m "slow or gpu or lammps"   # extended suite, on a machine that has them
 uv run ruff format . && uv run ruff check . && uv run mypy   # must be clean
 ```
 
-Work package 0 (WP0) creates the `pyproject.toml` configuration these commands
-rely on (`docs/dev/style.md` §6). Until it lands, only WP0 work is valid.
+The tool configuration lives in `pyproject.toml` (`docs/dev/style.md` §6);
+CI (`.github/workflows/ci.yml`) runs exactly these commands.
 
 ## 3. Hard rules
 
 Breaking any of these is a defect, whoever wrote the code.
 
-1. **Never edit `src/polyequil/_vendor/`.** Adapt by subclassing or wrapping
-   in `polyequil` modules. A defect in vendored code is logged in
-   `DEFECTS.md` and reported to the maintainer; it is fixed upstream and
-   re-synced, never patched in place.
-2. **Never build a `heteromorph` `Ensemble` from frames of one trajectory.**
-   Its error bars assume independent realizations. Cross-replica statistics
-   go through `TrajectoryEnsemble`; within-trajectory errors use block
-   averaging.
+1. **`heteromorph` is not a dependency.** Code adapted from it is rewritten
+   into `polyequil` and its module docstring names the heteromorph source
+   file. Never add `heteromorph` as an import or a vendored copy.
+2. **Never average frames of one trajectory as if they were independent.**
+   The reported error bars assume independent replicas. Cross-replica
+   statistics go through `TrajectoryEnsemble` (which reduces each time slice
+   across replicas only); within-trajectory errors use block averaging.
 3. **One definition per physical convention.** Normalizations, units, sign
    conventions, and estimator choices (e.g. per-bond normalization of
    $S_Q$, the $S(q)$ extrapolation form) are defined once, in
@@ -92,10 +91,11 @@ Breaking any of these is a defect, whoever wrote the code.
 ## 5. Write DRY code
 
 - **Search before you write.** Before adding a function, look for one that
-  already does it: `grep` the package, the vendored `heteromorph` (it already
-  has `structure_factor`, `pair_correlation`, `Ensemble`, `PeriodicCell`
-  minimum-image and wrapping), and NumPy/SciPy. Reuse it; extend it if it
-  falls short.
+  already does it: `grep` the package (e.g. `Box.minimum_image`/`wrap`,
+  `ChainTopology.pairs_at_separation`/`make_whole`, `ChainConfiguration.unwrapped`,
+  `TrajectoryEnsemble`), then `heteromorph` (`structure_factor`,
+  `pair_correlation`: port, don't import), then NumPy/SciPy. Reuse it;
+  extend it if it falls short.
 - **The second copy is the signal.** When you would copy logic a second time,
   factor it into one function in the module that owns that concept, and
   replace the first copy too.
@@ -140,8 +140,9 @@ analytic references are in `docs/dev/testing.md`.
 - **Clarify before coding.** If the task, a physics convention, or an
   interface is ambiguous, stop and ask the person who dispatched you. Do
   not guess. State the assumptions you did make in your report and PR.
-- **Code against the interfaces** in `docs/design.md` §5 and the WP0
-  stubs. Changing a public signature needs the maintainer's approval.
+- **Code against the existing interfaces** (`docs/design.md` §5, and the
+  public names in `src/polyequil/__init__.py`). Changing a public signature
+  needs the maintainer's approval.
 - **Set verifiable goals.** For multi-step tasks, write a short plan where
   every step has a check (`→ verify: <test or command>`), and loop until
   each check passes.

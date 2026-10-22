@@ -92,32 +92,40 @@ Audited at `heteromorph` v0.9.0 (commit `3abe3ca`).
 | `structure_factor`, `pair_correlation` exist for `PointConfiguration` | Reuse for monomer $S(q)$ and $g(r)$; they double as CPU oracles for GPU kernels |
 | No license selected upstream | Sam maintains both repositories; this repo is MIT-licensed |
 
-**Vendoring (decided).** `heteromorph` is not a dependency. The needed modules are copied **verbatim** into `src/polyequil/_vendor/heteromorph/`; all their internal imports are relative, so they work at that path unmodified.
+**Rewrite (decided, implemented in WP0–WP3).** `heteromorph` is neither a dependency nor vendored. The needed logic was rewritten into first-class `polyequil` modules, each naming its heteromorph source in its module docstring:
 
-| Tier | Modules | Lines | Adds |
-|---|---|---|---|
-| Core (ensemble machinery) | `ensemble`, `accumulators`, `execution`, `observables`, `_metadata`, `errors`, `microstructure`, `domain`, `cell`, `_version` | ≈3.1k | NumPy |
-| Points (base class, $S(q)$, $g(r)$) | `configuration`, `point_patterns`, `_radial`, `_number_windows` | ≈2.6k | SciPy |
+| `polyequil` module | heteromorph source | Change |
+|---|---|---|
+| `errors` | `errors` | `EnsembleError.task_indices` (a task is a (replica, slice) pair) |
+| `_metadata` | `_metadata` | as is, minus `passthrough_types` |
+| `results` | `observables` | `ObservableResult`, `SeparableAxes`, `PointSet`; `AffineGrid` dropped until S(q) grids need it |
+| `accumulators` | `accumulators` | as is |
+| `execution` | `execution` | `serial`/`outer` only; threadpoolctl required |
+| `_randomness` | `ensemble` helpers | per-task streams keyed `spawn_key = (replica, slice)` |
+| `box` | `cell`, `domain` | orthorhombic only; closed-form minimum image with the same `+L/2 -> -L/2` tie rule |
+| `ensemble` | `ensemble` | `TrajectoryEnsemble` / `TimeResolvedResult` replace `Ensemble` / `EnsembleResult` |
 
-Rules: (i) vendored files are never edited — every adaptation lives in `polyequil` modules that import from `_vendor`, so a re-sync is a file copy; (ii) `_vendor/heteromorph/VENDORED.md` records the upstream commit (`3abe3ca`) and file list; (iii) the upstream tests for these modules are copied alongside with imports rewritten and must pass in CI; (iv) lint and type checks exclude `_vendor`; (v) a defect found in vendored code is fixed upstream first, then re-synced.
+`structure_factor` and `pair_correlation` are ported when WP4/WP5 need them.
 
-### 5.2 New types (object-oriented layer)
+### 5.2 Types (object-oriented layer, as implemented)
 
 ```
-ChainTopology            immutable: bonds, angles, chain_id per bead, bead index within chain
-                         pairs_at_separation(n) -> (i, j) index arrays
-ChainConfiguration       PointConfiguration + topology, images, velocities?, step, time
-                         unwrapped() -> positions with chains made whole
-FrameRef                 lazy, picklable handle (file, frame index, cell metadata); .load()
-Trajectory               time-ordered frames of ONE run sharing one topology; lazy; .window(t0, t1)
-TrajectoryWindow         a Microstructure wrapping a contiguous span of one trajectory
-TrajectoryEnsemble       M independent trajectories on a common time grid
-    .at(t)        -> heteromorph.Ensemble of the M frames at time t
-    .evaluate(observable, times=..., window=...) -> TimeResolvedResult
-TimeResolvedResult       EnsembleResult per time, stacked along a leading time axis
+Box                      orthorhombic periodic box: wrap, minimum_image, image_flags
+ChainTopology            linear chains: bonds, angles, chain_id, bead_type (canonical, frozen)
+                         pairs_at_separation(n), make_whole(positions, box) -> images
+ChainConfiguration       one frame: box, positions (as stored), images, topology, step, time,
+                         velocities?; unwrapped()
+FrameRef                 picklable (path, index) handle; .load() -> ChainConfiguration
+TrajectoryWindow         picklable (path, start, stop) handle; .load() -> WindowData
+WindowData               stacked (F, n, 3) arrays of one window + images_source
+Trajectory               lazy view of one file (header only); frame(i), ref(i), window(t0, t1)
+TrajectoryEnsemble       M independent replicas (distinct files, equal topology, distinct seeds)
+    .evaluate(obs, times=None, execution=..., retain_samples=..., random_seed=...)
+    .evaluate_windows(obs, windows=[(t0, t1), ...], ...)        -> TimeResolvedResult
+TimeResolvedResult       mean / std / s.e. with a leading time (or window) axis
 ```
 
-Notes for implementers: `PointConfiguration` is a frozen `slots=True` dataclass whose trailing fields have defaults, so new fields on the subclass must also default and be validated in `__post_init__`. Every ABC in the hierarchy declares `__slots__ = ()`. `TrajectoryEnsemble.evaluate` builds one `heteromorph.Ensemble` per time slice, so cross-replica error bars inherit heteromorph's validation unchanged.
+Parallelism: one task per (replica, frame) or (replica, window), executed in slice-major order and reduced per slice across replicas only, so `serial` and `outer` results are bit-identical. Storage is the HDF5 schema `polyequil-1` (`polyequil.io.hdf5`; `kg_template-1` files read unchanged); `polyequil.io.lammps` reads data/dump/log files and converts them.
 
 ### 5.3 Observables (functional layer)
 
@@ -132,7 +140,7 @@ Pure functions with the heteromorph contract, returning `ObservableResult` with 
 - **Backends.** One array-namespace switch (`numpy` | `cupy`) for three kernels: direct $S(\mathbf q)$ sum, pair histogram, $\mathsf Q$ accumulation. GPU results must match CPU to a stated tolerance. GitHub Actions has no GPU: GPU tests carry a marker and run on Della by a documented manual command.
 - **I/O.** Readers for LAMMPS data files (topology) and dump files (frames); canonical on-disk store is chunked HDF5, one file per trajectory, with frame-level random access.
 - **Simulation.** LAMMPS input generators for the Section 4 matrix and SLURM submission for Della. The aligning field has no stock LAMMPS equivalent: implement a small C++ `fix` (the project's compiled-language component), prototyped and cross-checked against a Python `fix external` callback.
-- **Tooling.** `uv`, `src/` layout, Python $\geq3.11$, NumPy $\geq2$, SciPy $\geq1.13$ (the vendored code's floors); `ruff`, `mypy --strict`, `pytest` + Hypothesis; MkDocs; GitHub Actions for lint, types, CPU tests, docs build.
+- **Tooling.** `uv`, `src/` layout, Python $\geq3.11$, NumPy $\geq2$, h5py, threadpoolctl (SciPy added when first used); `ruff`, `mypy --strict`, `pytest` + Hypothesis; MkDocs; GitHub Actions for lint, types, CPU tests, docs build.
 
 ## 6. Work packages
 
@@ -140,7 +148,7 @@ Written to be dispatched to agents. Each lists dependencies and an acceptance te
 
 | WP | Scope | Depends on | Acceptance |
 |---|---|---|---|
-| **0 Scaffold + interfaces** | Repo, `uv` project, CI, vendored heteromorph (§5.1) with its upstream tests, type stubs for every class and function in 5.2–5.3 | — | Vendored tests and CI green on empty stubs; `_vendor` files byte-identical to upstream `3abe3ca`; interface doc reviewed by all three authors |
+| **0 Scaffold + interfaces** | Repo, `uv` project, CI, heteromorph logic rewritten into `polyequil` (§5.1) | — | CI green (ruff, mypy --strict, pytest); **done** together with WP1–WP3 |
 | **1 Topology + configuration** | `ChainTopology`, `ChainConfiguration`, unwrapping | 0 | Property tests: unwrap∘wrap identity; `pairs_at_separation` count $=\sum_c (N_c-n)$; chains whole across boundaries |
 | **2 I/O + storage** | LAMMPS readers, HDF5 store, `FrameRef`, `Trajectory` | 1 | Round-trip is bit-exact; a 10 GB trajectory is opened and one frame read in bounded memory |
 | **3 Trajectory ensemble** | `TrajectoryWindow`, `TrajectoryEnsemble`, `TimeResolvedResult` | 1, 2 | Matches a hand-rolled NumPy mean/SE on synthetic data; refuses mismatched time grids; refuses same-run frames in one ensemble |
@@ -180,7 +188,7 @@ Every defect is logged in `DEFECTS.md` when found, and every fix lands with a re
 
 | # | Decision | Status |
 |---|---|---|
-| D1 | How to consume heteromorph | **Settled:** vendor verbatim (§5.1); Sam maintains both repositories |
+| D1 | How to consume heteromorph | **Settled:** rewrite into `polyequil` (§5.1), no dependency, no vendored copy; Sam maintains both repositories |
 | D2 | DVOCB($n$) systems | **Settled:** out of scope |
 | D3 | Reference trajectories | **Settled:** do not exist yet; Sam generates them later; only WP10 depends on them |
 | D4 | Schedule | **Settled:** work packages are ordered by dependency, not dated |
@@ -196,7 +204,7 @@ Every defect is logged in `DEFECTS.md` when found, and every fix lands with a re
 | Low-$q$ noise swamps $X_\rho(t)$ | Power analysis in WP9 sets $M$ and window before production |
 | $\chi$ unobtainable for entangled chains | Short-chain series + extrapolation; reference-melt $S_Q(0)$ as baseline (§3 item 8) |
 | Stiff melts order nematically | Stiffness ceiling fixed in the pilot |
-| Vendored copy drifts from upstream | Verbatim-only rule, recorded commit, upstream tests in CI (§5.1) |
+| Rewritten code diverges from heteromorph fixes | Each module names its heteromorph source; port relevant upstream fixes by hand |
 | Reference trajectories arrive late | Only WP10 depends on them; everything else runs on synthetic and short brute-force data |
 | Scope | Out-of-scope list in §4; WP6 and artifact type 2 are the first to cut |
 
@@ -217,7 +225,7 @@ Every defect is logged in `DEFECTS.md` when found, and every fix lands with a re
 | "Nonequilibrium index" used, Hopkins et al. struck | Uncited central concept | Reference restored |
 | Content items 3–4 (viscoelasticity; CPU/GPU concurrency) | Scope creep; item 4 self-described as too hard; duplicate numbering; empty "P:" placeholders | Stretch goals |
 | DVOCB($n$) systems | Undefined; atomistic scope | Excluded |
-| Use `Ensemble` from heteromorph | No time axis, in-memory only, independence assumption, no topology | Vendored verbatim and extended by new types (§5.1–5.2) |
+| Use `Ensemble` from heteromorph | No time axis, in-memory only, independence assumption, no topology | Rewritten and adapted into `polyequil` (§5.1–5.2) |
 | "Interchangeable CPU and GPU backends" | No kernels named; CI cannot test GPU | §5.4 |
 | Embedded-Python LAMMPS; C/C++ "if needed" | Aligning field has no stock implementation | C++ `fix` in WP7 |
 | "Develop a unit testing framework" | Reinvents `pytest` | `pytest` + Hypothesis; analytic tests T1–T8 |
