@@ -1,6 +1,8 @@
 import contextlib
 
 import pytest
+from hypothesis import example, given, settings
+from hypothesis import strategies as st
 
 from polyequil.errors import EnsembleError, ValidationError
 from polyequil.execution import ExecutionPolicy, execute
@@ -63,3 +65,22 @@ def test_worker_death_names_candidate_tasks():
     with pytest.raises(EnsembleError, match="terminated") as info:
         _run(ExecutionPolicy("outer", total_cpus=2), fx.exit_on_four, list(range(8)))
     assert 4 in info.value.task_indices
+
+
+def test_regression_D001_serial_mode_limits_native_threads():
+    """D-001: serial mode ran observables with the parent's full BLAS pool."""
+    for policy in (
+        ExecutionPolicy(total_cpus=4),
+        ExecutionPolicy("outer", total_cpus=2),
+    ):
+        assert {r for _, r in _run(policy, fx.blas_thread_count, [0, 1])} == {1}
+
+
+@settings(max_examples=5, deadline=None)
+@given(st.integers(1, 6))
+@example(2)
+def test_every_mode_runs_tasks_single_threaded(task_count):
+    results = _run(
+        ExecutionPolicy(total_cpus=4), fx.blas_thread_count, range(task_count)
+    )
+    assert all(r == 1 for _, r in results)

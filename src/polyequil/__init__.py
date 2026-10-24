@@ -28,6 +28,7 @@ from polyequil.errors import (
     ValidationError,
 )
 from polyequil.execution import ExecutionPolicy
+from polyequil.indices import Estimate
 from polyequil.results import ObservableResult, PointSet, SeparableAxes
 from polyequil.topology import ChainTopology, linear_chains
 from polyequil.trajectory import FrameRef, Trajectory, TrajectoryWindow, WindowData
@@ -39,6 +40,7 @@ __all__ = [
     "ChainConfiguration",
     "ChainTopology",
     "EnsembleError",
+    "Estimate",
     "ExecutionPolicy",
     "FormatError",
     "FrameRef",

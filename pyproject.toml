@@ -55,7 +55,7 @@ ignore = [
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D", "ANN", "PT018"]
+"tests/**" = ["D", "ANN", "PT018", "N802"]  # N802: test_regression_D### names
 "src/**" = ["PT"]
 
 [tool.ruff.lint.isort]
