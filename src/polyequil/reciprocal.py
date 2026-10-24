@@ -138,7 +138,7 @@ def reciprocal_shells(
     if modes.shape[0] == int(include_zero) and not include_zero:
         raise ValidationError(
             f"no reciprocal mode with 0 < |k| <= {k_max}; the smallest is "
-            f"{2.0 * np.pi / float(box.lengths.max()):.4g}"
+            f"{2.0 * np.pi / float(np.max(box.lengths)):.4g}"
         )
     order = np.argsort(k2, kind="stable")
     modes, k2 = modes[order], k2[order]
