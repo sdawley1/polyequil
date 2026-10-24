@@ -89,3 +89,25 @@ def write_trajectory(
 def synthetic(tmp_path: Path) -> Path:
     """One small synthetic trajectory."""
     return write_trajectory(tmp_path / "synthetic.h5")
+
+
+def point_configuration(positions: np.ndarray, box: Box) -> ChainConfiguration:
+    """Return unbonded points (one-bead chains) stored wrapped with images."""
+    images = box.image_flags(positions).astype(np.int32)
+    topology = linear_chains(np.ones(len(positions), dtype=np.int64))
+    wrapped = positions - images * box.lengths
+    return ChainConfiguration(box, wrapped, images, topology, 0, 0.0)
+
+
+def chain_frame(
+    seed: int,
+    *,
+    chain_lengths: tuple[int, ...] = (20,) * 40,
+    box_length: float = 10.0,
+) -> ChainConfiguration:
+    """Return random-walk chains with independent isotropic unit bonds."""
+    topology = linear_chains(chain_lengths)
+    box = Box(lo=np.zeros(3), lengths=np.full(3, box_length))
+    return random_walk_frame(
+        topology, box, np.random.default_rng(seed), bond=1.0, velocities=False
+    )

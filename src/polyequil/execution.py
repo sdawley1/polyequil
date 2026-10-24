@@ -153,7 +153,10 @@ def execute(
         When a task raises (definitive index) or a worker dies (candidates).
     """
     if policy.mode == "serial":
-        yield from _execute_serially(worker_function, payloads, label)
+        # The parent honours threads_per_worker too (D-001); otherwise BLAS
+        # calls inside observables reduce in a different order than in workers.
+        with threadpool_limits(limits=policy.threads_per_worker or 1):
+            yield from _execute_serially(worker_function, payloads, label)
     else:
         yield from _execute_pooled(policy, worker_function, list(payloads), label)
 

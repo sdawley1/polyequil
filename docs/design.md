@@ -43,7 +43,7 @@ These are the points the draft left undefined; each is a place an implementation
 1. **$S(q\to0)$ cannot be read off at $q=0$.** At fixed $N$, $S(0)\equiv0$. Compute $S(\mathbf q)$ on reciprocal-lattice vectors, then extrapolate with $S(q)=S_0+a q^2$ over $q<q_{\max}$ **[PILOT]**. Report $S_0$ with the fit uncertainty and the sensitivity to $q_{\max}$.
 2. **Statistical cost.** A single mode's $|\rho_{\mathbf q}|^2/N$ has relative standard deviation $\approx 1$. The lowest shell has 3 independent modes, so one frame from $M=16$ replicas gives $\sim 14\%$ at $q_{\min}$. Time-resolved $X_\rho(t)$ therefore needs a window average; the window length versus time resolution trade-off must be reported, not hidden.
 3. **$\kappa_T$ is measured as a response**: finite difference of $P(\rho)$ from short runs at $\rho(1\pm\epsilon)$ at fixed $T$. NPT volume fluctuations, $\kappa_T=\langle\delta V^2\rangle/(k_BT\langle V\rangle)$, are a cross-check only (they are themselves a fluctuation estimate). Thermostat and barostat must sample the correct ensemble (Nosé–Hoover/MTK or Langevin; never Berendsen).
-4. **Orientation is not conserved**, so $S_Q$ is evaluated directly at $q=0$ with no extrapolation. In the isotropic phase all five independent components of $\mathsf Q=\sum_b(\hat u_b\hat u_b-\mathsf I/3)$ are equivalent and $\langle(\sum_b P_2)^2\rangle = \tfrac{3}{10}\langle\mathsf Q{:}\mathsf Q\rangle$; use the full contraction for a fivefold gain in statistics. A nonzero mean $\langle\mathsf Q\rangle$ or unequal components is itself a (cheaper) anisotropy diagnostic and is always reported alongside $X_Q$.
+4. **Orientation is not conserved**, so $S_Q$ is evaluated directly at $q=0$ with no extrapolation. In the isotropic phase all five independent components of $\mathsf Q=\sum_b(\hat u_b\hat u_b-\mathsf I/3)$ are equivalent and $\langle(\sum_b P_2)^2\rangle = \tfrac{3}{10}\langle\mathsf Q{:}\mathsf Q\rangle$; use the full contraction for a fivefold gain in statistics. A nonzero mean $\langle\mathsf Q\rangle$ or unequal components is itself a (cheaper) anisotropy diagnostic and is always reported alongside $X_Q$. *Implemented (WP5):* $S_Q(k)$ is computed on the same reciprocal-lattice shells as $S(k)$, including $k=0$; the direct $S_Q(0)$ is the estimator, and the $S_0+ak^2$ extrapolation of $S_Q(k>0)$ is reported as a cross-check (the two agree within error on `trajectories/ex`).
 5. **Segment scale.** $\hat u_b$ is the unit vector spanning $n_s$ consecutive bonds; $n_s=1$ and $n_s\approx$ one Kuhn length are both computed.
 6. **The draft's orientational relation is inconsistent** (one version carries a factor $\rho$, the struck-out version does not). With per-bond normalization, as above, there is no $\rho$.
 7. **$\chi$ must be in the linear regime**: at least three field strengths, with the fitted slope and a nonlinearity check.
@@ -131,9 +131,9 @@ Parallelism: one task per (replica, frame) or (replica, window), executed in sli
 
 Pure functions with the heteromorph contract, returning `ObservableResult` with a `convention` that records normalization and estimator.
 
-- Frame: `density`, `pair_correlation`, `structure_factor` (wrappers), `msid`, `radius_of_gyration`, `q_tensor`, `bond_angle_distribution`.
-- Window: `s0_extrapolated`, `q_fluctuation`, `block_average`, `msd` (stretch).
-- Derived (act on results, not frames): `kappa_T_from_response`, `chi_from_response`, `nonequilibrium_index`, `orientational_index`, `detection_threshold`.
+- Frame: `density`, `pair_correlation`, `structure_factor`, `orientational_structure_factor`, `order_tensor` (implemented, `observables/structure.py`), `msid`, `radius_of_gyration` (implemented), `bond_angle_distribution`.
+- Frame or window: `small_k_limit` (implemented; S0 + a k² fit per replica, weights = shell mode counts, so the across-replica s.e. is honest), `window_mean` (implemented; time average within one replica), `block_average`, `msd` (stretch).
+- Derived (act on results, not frames): `density_index`, `orientational_index`, `estimate_from` (implemented, `indices.py`; κ_T and χ are inputs), `kappa_T_from_response`, `chi_from_response`, `detection_threshold`.
 
 ### 5.4 Backends, I/O, simulation
 

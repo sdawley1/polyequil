@@ -80,3 +80,34 @@ def exit_on_four(value: int) -> int:
     if value == 4:
         os._exit(1)
     return value
+
+
+def blas_thread_count(value: int) -> int:
+    """Return the largest native thread-pool size visible to this task."""
+    from threadpoolctl import threadpool_info
+
+    return max((pool["num_threads"] for pool in threadpool_info()), default=1)
+
+
+def quadratic_shells(
+    config: ChainConfiguration,
+    *,
+    threads: int = 1,
+    k_max: float,
+    s0: float,
+    a: float,
+    rng: np.random.Generator | None = None,
+) -> ObservableResult:
+    """S(k) = s0 + a k^2 on the box's shells; with rng, each shell is the mean of
+    its modes, each exponentially distributed (the ideal per-mode noise)."""
+    from polyequil.reciprocal import reciprocal_shells
+
+    shells = reciprocal_shells(config.box, k_max, include_zero=False)
+    mean = s0 + a * shells.shell_k**2
+    counts = shells.shell_counts
+    values = mean if rng is None else rng.gamma(counts, mean / counts)
+    return ObservableResult(
+        values,
+        SeparableAxes((("k", shells.shell_k),)),
+        auxiliary={"shell_counts": counts},
+    )
