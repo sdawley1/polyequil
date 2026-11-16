@@ -46,7 +46,7 @@ IntArray = NDArray[np.int64]
 
 @dataclass(frozen=True, slots=True, eq=False)
 class ReciprocalShells:
-    """Half-space reciprocal modes of a box, grouped into shells of equal |k|.
+    """Half-space reciprocal modes of a box, grouped into shells of equal ``|k|``.
 
     ``modes`` (M, 3) are integer mode indices sorted by shell; ``shell_index``
     (M,) maps each mode to its shell; ``shell_k`` (S,) is strictly increasing;
@@ -86,7 +86,7 @@ class ReciprocalShells:
 
     @property
     def mode_k(self) -> FloatArray:
-        """Return |k| of every mode, shape (M,)."""
+        """Return ``|k|`` of every mode, shape (M,)."""
         return self.shell_k[self.shell_index]
 
 

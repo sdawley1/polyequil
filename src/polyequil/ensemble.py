@@ -75,9 +75,9 @@ class TimeResolvedResult:
 
     ``kind`` is ``"frame"`` (``times`` has shape (T,)) or ``"window"``
     (``times`` holds ``[t_start, t_stop]`` rows, shape (T, 2)). ``mean`` has
-    shape (T, *value_shape). With one replica there is no uncertainty and both
+    shape ``(T, *value_shape)``. With one replica there is no uncertainty and both
     deviations are ``None``; an unavailable uncertainty is never reported as
-    zero. ``samples`` (T, M, *value_shape) is kept only on request.
+    zero. ``samples`` ``(T, M, *value_shape)`` is kept only on request.
     """
 
     kind: str

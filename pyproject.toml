@@ -28,6 +28,11 @@ dev = [
   "pytest>=8.0",
   "ruff>=0.6",
 ]
+docs = [
+  "furo>=2025.12.19",
+  "myst-parser>=5.2.0",
+  "sphinx>=9.0.4",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/polyequil"]
