@@ -140,7 +140,7 @@ Pure functions with the heteromorph contract, returning `ObservableResult` with 
 - **Backends.** One array-namespace switch (`numpy` | `cupy`) for three kernels: direct $S(\mathbf q)$ sum, pair histogram, $\mathsf Q$ accumulation. GPU results must match CPU to a stated tolerance. GitHub Actions has no GPU: GPU tests carry a marker and run on Della by a documented manual command.
 - **I/O.** Readers for LAMMPS data files (topology) and dump files (frames); canonical on-disk store is chunked HDF5, one file per trajectory, with frame-level random access.
 - **Simulation.** LAMMPS input generators for the Section 4 matrix and SLURM submission for Della. The aligning field has no stock LAMMPS equivalent: implement a small C++ `fix` (the project's compiled-language component), prototyped and cross-checked against a Python `fix external` callback.
-- **Tooling.** `uv`, `src/` layout, Python $\geq3.11$, NumPy $\geq2$, h5py, threadpoolctl (SciPy added when first used); `ruff`, `mypy --strict`, `pytest` + Hypothesis; MkDocs; GitHub Actions for lint, types, CPU tests, docs build.
+- **Tooling.** `uv`, `src/` layout, Python $\geq3.11$, NumPy $\geq2$, h5py, threadpoolctl (SciPy added when first used); `ruff`, `mypy --strict`, `pytest` + Hypothesis; Sphinx (MyST, autodoc, furo); GitHub Actions for lint, types, CPU tests, docs build.
 
 ## 6. Work packages
 
@@ -159,7 +159,7 @@ Written to be dispatched to agents. Each lists dependencies and an acceptance te
 | **8 Artifacts + detection** | Artifact operators, $\lambda^*$ estimator | 1, 5 | $\lambda=0$ leaves configuration unchanged; density preserved to round-off; false-positive rate at $\lambda=0$ consistent with $z$ |
 | **9 Pilot** | Fix all **[PILOT]** values; measure decorrelation times; power analysis for $M$ and window length | 4, 5, 7 | Short report with chosen parameters and predicted error bars |
 | **10 Production + analysis** | Run the matrix; evaluate H1–H3 | 9, 8, reference trajectories | Figures: diagnostics versus $t$; $\lambda^*$ versus stiffness; packaged reference dataset |
-| **11 Docs + release** | MkDocs site, tutorial notebook, reference-data loader | all | Fresh-clone install and tutorial run from the docs alone |
+| **11 Docs + release** | Sphinx site, tutorial notebook, reference-data loader | all | Fresh-clone install and tutorial run from the docs alone |
 
 WPs 1–2, 4, and 7 can start in parallel once WP0 merges; 3 and 5 follow; 6 and 8 follow those. Suggested ownership: Sam — 0, 3, 5, 8, reference trajectories; Andrea — 7, 9, 10; Hong-Ye — 2, 6, CI/docs; 1 and 4 shared. WPs 0–9 and 11 do not need the reference trajectories.
 

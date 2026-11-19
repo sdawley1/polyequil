@@ -30,7 +30,7 @@ both beat feature-rich.
 src/polyequil/                 the package
 src/polyequil/io/              HDF5 storage + LAMMPS readers/converter
 tests/                         pytest suite; mirrors src/ layout
-docs/                          design doc, dev guides, MkDocs site
+docs/                          design doc, dev guides, Sphinx site
 trajectories/ex/               small reference KG trajectories (HDF5) — READ-ONLY
 DEFECTS.md                     defect log (§6)
 ```
@@ -40,6 +40,7 @@ uv sync                                    # set up the environment
 uv run pytest                              # fast suite (default markers skip slow/gpu/lammps)
 uv run pytest -m "slow or gpu or lammps"   # extended suite, on a machine that has them
 uv run ruff format . && uv run ruff check . && uv run mypy   # must be clean
+uv sync --group docs && uv run sphinx-build -W docs docs/_build/html   # docs build
 ```
 
 The tool configuration lives in `pyproject.toml` (`docs/dev/style.md` §6);
