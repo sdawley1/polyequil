@@ -9,31 +9,35 @@ uv sync && uv run pytest        # set up and run the test suite
 ```
 
 ```python
-from pathlib import Path
+>>> from pathlib import Path
+>>> from polyequil import ExecutionPolicy, TrajectoryEnsemble
+>>> from polyequil.observables.chain import radius_of_gyration
+>>> ensemble = TrajectoryEnsemble(sorted(Path("trajectories/ex").glob("*.h5")))
+>>> result = ensemble.evaluate(radius_of_gyration, execution=ExecutionPolicy("outer"))
+>>> result.mean.shape == result.standard_error.shape == result.times.shape  # one row per time slice
+True
 
-from polyequil import ExecutionPolicy, TrajectoryEnsemble
-from polyequil.observables.chain import radius_of_gyration
-
-ensemble = TrajectoryEnsemble(sorted(Path("trajectories/ex").glob("*.h5")))
-result = ensemble.evaluate(radius_of_gyration, execution=ExecutionPolicy("outer"))
-result.times, result.mean, result.standard_error   # one row per time slice
 ```
 
 Structure factors and the equilibrium indices (κ_T and χ come from response
 runs):
 
 ```python
-from polyequil.indices import Estimate, density_index, estimate_from
-from polyequil.observables.extrapolation import small_k_limit
-from polyequil.observables.structure import structure_factor
+>>> from polyequil.indices import Estimate, density_index, estimate_from
+>>> from polyequil.observables.extrapolation import small_k_limit
+>>> from polyequil.observables.structure import structure_factor
+>>> s0 = ensemble.evaluate_windows(
+...     small_k_limit, windows=[(4000.0, 5000.0)],
+...     frame_observable=structure_factor, k_fit=1.5,
+... )
+>>> kappa, kappa_error = 0.06, 0.005  # placeholder: measure κ_T in a response run
+>>> x_rho = density_index(estimate_from(s0, (0,)), density=0.85, temperature=1.0,
+...                       kappa_t=Estimate(kappa, kappa_error))
 
-s0 = ensemble.evaluate_windows(
-    small_k_limit, windows=[(4000.0, 5000.0)],
-    frame_observable=structure_factor, k_fit=1.5,
-)
-x_rho = density_index(estimate_from(s0, (0,)), density=0.85, temperature=1.0,
-                      kappa_t=Estimate(kappa, kappa_error))
 ```
+
+The examples above are run as doctests by `uv run pytest`, so they stay in
+sync with the code.
 
 LAMMPS output converts with
 `polyequil.io.lammps.convert_lammps(data, dump, out, log=log)`.

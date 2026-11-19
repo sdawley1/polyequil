@@ -7,6 +7,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 
 # Sphinx build output
 docs/_build/

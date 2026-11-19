@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 
 from polyequil.ensemble import TrajectoryEnsemble
@@ -14,6 +14,9 @@ from polyequil.indices import (
 from tests import observable_fixtures as fx
 
 positive = st.floats(1e-3, 1e3, allow_nan=False, allow_infinity=False)
+# Relative errors: exactly zero, or far enough above the subnormal range that
+# products with `positive` values stay normal (D-002, testing.md §4).
+relative_error = st.one_of(st.just(0.0), st.floats(1e-100, 1.0))
 
 
 def test_indices_vanish_when_the_relations_hold():
@@ -31,7 +34,8 @@ def test_indices_vanish_when_the_relations_hold():
         assert x.error == 0.0
 
 
-@given(positive, positive, positive, positive, st.floats(0, 1), st.floats(0, 1))
+@given(positive, positive, positive, positive, relative_error, relative_error)
+@example(s0=1.0, rho=1.0, t=1.0, kappa=29.0, rs=1e-100, rk=1e-100)  # D-002 edge
 def test_density_index_round_trips_and_propagates_errors(s0, rho, t, kappa, rs, rk):
     x = density_index(
         Estimate(s0, rs * s0),

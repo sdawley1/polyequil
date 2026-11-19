@@ -26,6 +26,7 @@ dev = [
   "hypothesis>=6.100",
   "mypy>=1.10",
   "pytest>=8.0",
+  "pytest-cov>=7.1.0",
   "ruff>=0.6",
 ]
 docs = [
@@ -91,10 +92,36 @@ check_untyped_defs = false
 # ============================================================
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-m 'not slow and not gpu and not lammps' --strict-markers"
+testpaths = ["tests", "README.md"]  # README examples run as doctests
+minversion = "8.0"
+addopts = [
+  "-ra",                # summarize skips/xfails/errors at the end of the run
+  "--strict-config",    # unknown keys in this table are errors
+  "--strict-markers",   # unregistered markers are errors
+  "--doctest-glob=README.md",
+  "-m", "not slow and not gpu and not lammps",
+]
+xfail_strict = true     # an xfail that unexpectedly passes fails the run
+filterwarnings = ["error"]  # any warning is a test failure unless filtered here
 markers = [
   "slow: takes more than ~10 s",
   "gpu: requires a CUDA GPU",
   "lammps: requires a LAMMPS executable",
+]
+
+# ============================================================
+# coverage
+# ============================================================
+
+[tool.coverage.run]
+source = ["polyequil"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85  # current total is 87% (branch coverage); do not let it slide
+show_missing = true
+skip_covered = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
 ]

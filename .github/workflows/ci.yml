@@ -31,7 +31,12 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run ruff check .
       - run: uv run mypy
-      - run: uv run pytest --hypothesis-profile=ci
+      # Coverage report: printed in the log and added to the run's summary page.
+      # The build fails if total coverage drops below fail_under (pyproject.toml).
+      - run: >-
+          uv run pytest --hypothesis-profile=ci
+          --cov --cov-report=term
+          --cov-report=markdown-append:"$GITHUB_STEP_SUMMARY"
 
   docs:
     name: docs build (Sphinx, warnings as errors)
