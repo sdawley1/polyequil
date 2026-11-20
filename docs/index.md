@@ -45,4 +45,5 @@ api
 design
 dev/style
 dev/testing
+changelog
 ```
