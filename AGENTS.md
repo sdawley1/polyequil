@@ -83,7 +83,8 @@ Breaking any of these is a defect, whoever wrote the code.
   `MM/YYYY`) and uses section banners. Shebang lines only on executable
   scripts, never on importable modules.
 - NumPy-style docstrings: one line for simple functions; `Parameters` /
-  `Returns` / `Raises` sections otherwise. State units and conventions.
+  `Returns` / `Raises` / `Examples` sections otherwise, with every example a
+  doctest that pytest runs. State units and conventions.
 - Functions ≤ 60 lines; no recursion; bounded loops; pre-allocated arrays in
   hot paths; no `exec`/`eval`/metaclasses.
 - Library code never calls `print`; scripts pass `flush=True`.
