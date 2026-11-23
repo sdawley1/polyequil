@@ -73,6 +73,20 @@ def fit_small_k(
         If the shapes differ, ``k_fit`` is not positive and finite, fewer than
         two shells lie in the fit range, or a shell count in the fit range is
         not positive.
+
+    Examples
+    --------
+    Noiseless shells of ``S(k) = 2 + 0.3 k^2`` are fitted exactly; the shell
+    beyond ``k_fit`` is ignored:
+
+    >>> import numpy as np
+    >>> from polyequil.observables.extrapolation import fit_small_k
+    >>> k = np.array([0.5, 1.0, 1.5, 3.0])
+    >>> values = 2.0 + 0.3 * k**2
+    >>> values[-1] = 99.0
+    >>> s0, a = fit_small_k(k, values, [3, 6, 4, 12], k_fit=1.5)
+    >>> round(float(s0), 12), round(float(a), 12)
+    (2.0, 0.3)
     """
     k_array = np.asarray(k, dtype=np.float64)
     y = np.asarray(values, dtype=np.float64)
@@ -137,6 +151,31 @@ def small_k_limit(
         ``auxiliary["shell_counts"]``, fewer than two shells lie in
         0 < k <= k_fit, or (for a window) :func:`window_mean` rejects the
         frames. Errors raised by ``frame_observable`` propagate unchanged.
+
+    Examples
+    --------
+    A perfect lattice has no long-wavelength density fluctuations, so the
+    structure factor vanishes on every shell below its first Bragg peak and
+    S0 = 0. Here eight single-bead chains sit on a cubic lattice of spacing 2
+    in a box of side 4, and three shells lie below ``k_fit``:
+
+    >>> import itertools
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.observables.extrapolation import small_k_limit
+    >>> from polyequil.observables.structure import structure_factor
+    >>> from polyequil.topology import linear_chains
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 4.0))
+    >>> lattice = np.array(list(itertools.product([0.0, 2.0], repeat=3)))
+    >>> images = np.zeros((8, 3), dtype=np.int32)
+    >>> topology = linear_chains([1] * 8)
+    >>> config = ChainConfiguration(box, lattice, images, topology, 0, 0.0)
+    >>> result = small_k_limit(config, frame_observable=structure_factor, k_fit=3.0)
+    >>> result.convention["fit_shells"].round(4).tolist()
+    [1.5708, 2.2214, 2.7207]
+    >>> bool(np.allclose(result.values, [0.0, 0.0], atol=1e-12))  # [S0, a]
+    True
     """
     if "k_max" in parameters:
         raise ValidationError("k_max is set to k_fit; do not pass it")

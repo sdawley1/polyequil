@@ -77,6 +77,29 @@ def estimate_from(
     ------
     ValidationError
         If the result has a single replica (no standard error).
+
+    Examples
+    --------
+    S0 at two times from a ``small_k_limit`` evaluation over four replicas
+    (values ``[S0, a]`` per time slice):
+
+    >>> import numpy as np
+    >>> from polyequil.ensemble import TimeResolvedResult
+    >>> from polyequil.indices import estimate_from
+    >>> from polyequil.results import SeparableAxes
+    >>> result = TimeResolvedResult(
+    ...     kind="frame",
+    ...     times=np.array([0.0, 100.0]),
+    ...     mean=np.array([[0.30, 1.2], [0.26, 1.1]]),
+    ...     standard_deviation=np.array([[0.04, 0.2], [0.02, 0.2]]),
+    ...     standard_error=np.array([[0.02, 0.1], [0.01, 0.1]]),
+    ...     replica_count=4,
+    ...     coordinates=SeparableAxes((("parameter", np.arange(2.0)),)),
+    ...     metadata={},
+    ... )
+    >>> s0 = estimate_from(result, component=(0,))
+    >>> s0.value.tolist(), s0.error.tolist()
+    ([0.3, 0.26], [0.02, 0.01])
     """
     if result.standard_error is None:
         raise ValidationError("a single-replica result has no standard error")
@@ -110,6 +133,21 @@ def density_index(
     ValidationError
         If ``density`` or ``temperature`` is not positive and finite, or any
         value of ``kappa_t`` is not positive and finite.
+
+    Examples
+    --------
+    S0 = 0.26 +/- 0.01 against rho T kappa_T = 0.85 x 1.0 x (0.30 +/- 0.006)
+    gives an index consistent with zero, as expected in equilibrium:
+
+    >>> from polyequil.indices import Estimate, density_index
+    >>> index = density_index(
+    ...     Estimate(0.26, 0.01),
+    ...     density=0.85,
+    ...     temperature=1.0,
+    ...     kappa_t=Estimate(0.30, 0.006),
+    ... )
+    >>> print(f"{float(index.value):.3f} +/- {float(index.error):.3f}")
+    0.020 +/- 0.044
     """
     scale = _positive(density, "density") * _positive(temperature, "temperature")
     return _ratio_index(s0, scale, kappa_t, "kappa_t")

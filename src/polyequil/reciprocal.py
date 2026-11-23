@@ -120,6 +120,21 @@ def reciprocal_shells(
     ValidationError
         If ``k_max`` is negative or not finite, no mode qualifies, or the mode
         count exceeds ``MAX_DIRECT_MODES``.
+
+    Examples
+    --------
+    In a cube of side 2 pi the wavevectors are the integer vectors, so the
+    shells are ``|k| = 1`` and ``sqrt(2)``, holding half of their 6 and 12 modes:
+
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.reciprocal import reciprocal_shells
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 2 * np.pi))
+    >>> shells = reciprocal_shells(box, 1.5, include_zero=False)
+    >>> shells.shell_k.round(4).tolist()
+    [1.0, 1.4142]
+    >>> shells.shell_counts.tolist()
+    [3, 6]
     """
     valid = isinstance(k_max, (int, float)) and np.isfinite(k_max)
     if not valid or k_max < 0 or (k_max == 0 and not include_zero):
@@ -181,6 +196,23 @@ def collective_amplitudes(
     ValidationError
         If ``positions`` is not a finite numeric (N, 3) array, or ``weights``
         is not None and not of shape (N, c).
+
+    Examples
+    --------
+    Two particles half a box apart cancel at the first mode along their
+    separation and add in phase at the second:
+
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.reciprocal import collective_amplitudes
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 4.0))
+    >>> positions = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
+    >>> modes = np.array([[1, 0, 0], [2, 0, 0]])
+    >>> amplitudes = collective_amplitudes(positions, None, box, modes)
+    >>> amplitudes.shape
+    (2, 1)
+    >>> np.abs(amplitudes[:, 0]).round(12).tolist()
+    [0.0, 2.0]
     """
     x = frozen_array(
         positions, name="positions", dtype=np.float64, shape=(None, 3), finite=True
