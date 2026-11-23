@@ -76,6 +76,37 @@ def structure_factor(
     ObservableResult
         Values (S,) on axis ``k``; ``auxiliary["shell_counts"]`` holds the
         number of half-space modes per shell.
+
+    Raises
+    ------
+    ValidationError
+        If ``threads`` is not a positive int, ``k_max`` is not positive and
+        finite, no mode has ``0 < |k| <= k_max``, or the mode count exceeds
+        ``reciprocal.MAX_DIRECT_MODES``.
+
+    Examples
+    --------
+    A simple cubic lattice of spacing 2 (eight single-bead chains in a box of
+    side 4) scatters only at its Bragg peak, k = 2 pi / 2, where S = N:
+
+    >>> import itertools
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.observables.structure import structure_factor
+    >>> from polyequil.topology import linear_chains
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 4.0))
+    >>> lattice = np.array(list(itertools.product([0.0, 2.0], repeat=3)))
+    >>> images = np.zeros((8, 3), dtype=np.int32)
+    >>> topology = linear_chains([1] * 8)
+    >>> config = ChainConfiguration(box, lattice, images, topology, 0, 0.0)
+    >>> result = structure_factor(config, k_max=np.pi)
+    >>> result.coordinates.axes[0][1].round(4).tolist()  # shell |k|, 1/sigma
+    [1.5708, 2.2214, 2.7207, 3.1416]
+    >>> result.values.round(12).tolist()
+    [0.0, 0.0, 0.0, 8.0]
+    >>> result.auxiliary["shell_counts"].tolist()
+    [3, 6, 4, 3]
     """
     _check_threads(threads)
     shells = reciprocal_shells(configuration.box, k_max, include_zero=False)
@@ -121,6 +152,36 @@ def orientational_structure_factor(
     -------
     ObservableResult
         Values (S,) on axis ``k`` with ``k[0] = 0``.
+
+    Raises
+    ------
+    ValidationError
+        If ``threads`` or ``segment_bonds`` is not a positive int, no chain is
+        long enough for one segment, a segment has zero length, ``k_max`` is
+        negative or not finite, or the mode count exceeds
+        ``reciprocal.MAX_DIRECT_MODES``.
+
+    Examples
+    --------
+    Four one-bond chains all aligned along z: each segment has ``Q:Q = 2/3``
+    and all add in phase, so ``S_Q(0) = (3/10)(2/3) N_seg = N_seg / 5``:
+
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.observables.structure import orientational_structure_factor
+    >>> from polyequil.topology import linear_chains
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+    >>> feet = np.array([[1.0, 1, 1], [5, 1, 1], [1, 5, 1], [5, 5, 1]])
+    >>> positions = np.repeat(feet, 2, axis=0) + [[0, 0, 0], [0, 0, 1]] * 4
+    >>> images = np.zeros((8, 3), dtype=np.int32)
+    >>> topology = linear_chains([2] * 4)
+    >>> config = ChainConfiguration(box, positions, images, topology, 0, 0.0)
+    >>> result = orientational_structure_factor(config, k_max=0.0)
+    >>> result.coordinates.axes[0][1].tolist()  # k = 0 only
+    [0.0]
+    >>> round(float(result.values[0]), 12)
+    0.8
     """
     _check_threads(threads)
     u, midpoints = segments(configuration, segment_bonds)
@@ -176,6 +237,27 @@ def segments(
     ValidationError
         If ``segment_bonds`` is not a positive int, no chain is long enough, or
         a segment has zero length.
+
+    Examples
+    --------
+    A three-bead chain along x with bonds of length 1 and 2:
+
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.observables.structure import segments
+    >>> from polyequil.topology import linear_chains
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+    >>> positions = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [3.0, 0.0, 0.0]]
+    >>> images = np.zeros((3, 3), dtype=np.int32)
+    >>> config = ChainConfiguration(box, positions, images, linear_chains([3]), 0, 0.0)
+    >>> u, midpoints = segments(config, 1)
+    >>> u.tolist()
+    [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+    >>> midpoints[:, 0].tolist()
+    [0.5, 2.0]
+    >>> segments(config, 2)[1][:, 0].tolist()  # one two-bond segment
+    [1.5]
     """
     if isinstance(segment_bonds, bool) or not isinstance(segment_bonds, int):
         raise ValidationError(f"segment_bonds must be an int, got {segment_bonds!r}")

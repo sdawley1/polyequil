@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 
 from polyequil.box import Box
@@ -178,6 +178,47 @@ def test_invalid_segment_lengths_raise():
         order_tensor(config, segment_bonds=4)
     with pytest.raises(ValidationError, match="segment"):
         order_tensor(config, segment_bonds=0)
+
+
+@pytest.mark.parametrize(
+    ("observable", "kwargs", "match"),
+    [
+        (structure_factor, {"k_max": 1.0, "threads": 0}, "threads"),
+        (structure_factor, {"k_max": float("inf")}, "k_max"),
+        (structure_factor, {"k_max": 0.1}, "no reciprocal mode"),
+        (structure_factor, {"k_max": 1e4}, "modes"),
+        (orientational_structure_factor, {"k_max": 1.0, "threads": True}, "threads"),
+        (orientational_structure_factor, {"k_max": -1.0}, "k_max"),
+        (orientational_structure_factor, {"k_max": 1e4}, "modes"),
+        (orientational_structure_factor, {"k_max": 0.0, "segment_bonds": 0}, "segment"),
+        (orientational_structure_factor, {"k_max": 0.0, "segment_bonds": 4}, "long"),
+    ],
+)
+def test_documented_errors_are_raised(observable, kwargs, match):
+    """Every condition in the Raises sections (D-003) is real."""
+    config = chain_frame(0, chain_lengths=(4, 4))
+    with pytest.raises(ValidationError, match=match):
+        observable(config, **kwargs)
+
+
+def test_zero_length_segment_raises():
+    config = chain_frame(0, chain_lengths=(2,))
+    stacked = _rebuilt(config, np.zeros((2, 3)))
+    with pytest.raises(ValidationError, match="zero length"):
+        orientational_structure_factor(stacked, k_max=0.0)
+
+
+@given(
+    st.one_of(
+        st.floats(max_value=0.0, allow_nan=False),
+        st.sampled_from([float("inf"), float("-inf"), float("nan")]),
+    )
+)
+@example(-1.0)  # D-003 repro
+def test_structure_factor_rejects_every_non_positive_or_non_finite_k_max(k_max):
+    """Generalizes D-003: the documented k_max condition holds for every value."""
+    with pytest.raises(ValidationError, match="k_max"):
+        structure_factor(chain_frame(0, chain_lengths=(4, 4)), k_max=k_max)
 
 
 # ----- ensemble -----

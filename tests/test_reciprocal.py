@@ -111,3 +111,19 @@ def test_shell_mean_averages_modes_of_each_shell():
     np.testing.assert_allclose(
         shell_mean(stacked, shells)[:, 1], 2 * np.array(expected)
     )
+
+
+@pytest.mark.parametrize(
+    ("positions", "weights", "match"),
+    [
+        (np.zeros((2, 2)), None, "positions"),
+        (np.full((2, 3), np.nan), None, "positions"),
+        (np.zeros((2, 3)), np.ones(2), "weights"),
+        (np.zeros((2, 3)), np.ones((3, 1)), "weights"),
+    ],
+)
+def test_amplitude_documented_errors_are_raised(positions, weights, match):
+    """Every condition in the collective_amplitudes Raises section (D-003)."""
+    modes = reciprocal_shells(CUBE, 2.0, include_zero=False).modes
+    with pytest.raises(ValidationError, match=match):
+        collective_amplitudes(positions, weights, CUBE, modes)

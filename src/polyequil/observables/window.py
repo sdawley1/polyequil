@@ -69,8 +69,38 @@ def window_mean(
     Raises
     ------
     ValidationError
-        If the observable is not callable, returns something other than an
-        ObservableResult, or returns incompatible results for two frames.
+        If ``window`` is not a ``WindowData``, the observable is not callable,
+        returns something other than an ObservableResult, or returns
+        incompatible results for two frames. Errors raised by
+        ``frame_observable`` propagate unchanged.
+
+    Examples
+    --------
+    A three-bead rod with unit bonds (``R_g^2 = 2/3``) stretched to bonds of
+    length 2 (``R_g^2 = 8/3``) in the next frame averages to ``5/3``:
+
+    >>> import numpy as np
+    >>> from polyequil.observables.chain import radius_of_gyration
+    >>> from polyequil.observables.window import window_mean
+    >>> from polyequil.topology import linear_chains
+    >>> from polyequil.trajectory import WindowData
+    >>> rod = np.array([[0.0, 0, 0], [1, 0, 0], [2, 0, 0]])
+    >>> window = WindowData(
+    ...     topology=linear_chains([3]),
+    ...     steps=np.array([0, 100]),
+    ...     times=np.array([0.0, 1.0]),
+    ...     box_lo=np.zeros((2, 3)),
+    ...     box_hi=np.full((2, 3), 10.0),
+    ...     positions=np.stack([rod, 2 * rod]),
+    ...     images=np.zeros((2, 3, 3), dtype=np.int32),
+    ...     velocities=None,
+    ...     images_source="dump",
+    ... )
+    >>> result = window_mean(window, frame_observable=radius_of_gyration)
+    >>> round(float(result.values), 12)
+    1.666666666667
+    >>> result.auxiliary["frame_count"]
+    2
     """
     if not isinstance(window, WindowData):
         raise ValidationError(f"window must be WindowData, not {type(window).__name__}")

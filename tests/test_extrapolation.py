@@ -15,6 +15,7 @@ from polyequil.observables.structure import (
 )
 from polyequil.observables.window import window_mean
 from polyequil.reciprocal import reciprocal_shells
+from polyequil.results import ObservableResult
 from polyequil.trajectory import Trajectory
 from tests import observable_fixtures as fx
 from tests.conftest import chain_frame
@@ -106,3 +107,34 @@ def test_invalid_requests_raise():
     shells = reciprocal_shells(CONFIG.box, 1.0, include_zero=False)
     with pytest.raises(ValidationError, match="shape"):
         fit_small_k(shells.shell_k, np.ones(3), shells.shell_counts, k_fit=1.0)
+
+
+def _scalar(config, *, threads=1, k_max):
+    return ObservableResult(np.asarray(1.0))
+
+
+def _k_axis_without_counts(config, *, threads=1, k_max):
+    return ObservableResult(np.ones(2), fx.axes(k=[0.5, 1.0]))
+
+
+@pytest.mark.parametrize(
+    ("item", "observable", "k_fit", "match"),
+    [
+        (object(), structure_factor, 1.0, "cannot fit"),
+        (CONFIG, structure_factor, float("nan"), "k_fit"),
+        (CONFIG, _scalar, 1.0, "single k axis"),
+        (CONFIG, _k_axis_without_counts, 1.0, "shell_counts"),
+    ],
+)
+def test_documented_errors_are_raised(item, observable, k_fit, match):
+    """Every condition in the small_k_limit Raises section (D-003) is real."""
+    with pytest.raises(ValidationError, match=match):
+        small_k_limit(item, frame_observable=observable, k_fit=k_fit)
+
+
+def test_non_positive_shell_counts_raise():
+    shells = reciprocal_shells(CONFIG.box, 1.0, include_zero=False)
+    counts = np.array(shells.shell_counts)
+    counts[0] = 0
+    with pytest.raises(ValidationError, match="positive"):
+        fit_small_k(shells.shell_k, np.ones(counts.size), counts, k_fit=1.0)

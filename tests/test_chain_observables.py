@@ -1,9 +1,12 @@
 import numpy as np
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 from polyequil.box import Box
+from polyequil.errors import ValidationError
 from polyequil.observables.chain import per_chain_rg2, radius_of_gyration
+from polyequil.topology import linear_chains
 from tests.conftest import random_walk_frame
 from tests.strategies import topologies
 
@@ -34,3 +37,14 @@ def test_rg_is_invariant_under_periodic_image_shifts(top, seed, shift):
         rtol=1e-9,
         atol=1e-12,
     )
+
+
+def test_non_positive_threads_raise():
+    """The radius_of_gyration Raises section (D-003)."""
+    frame = random_walk_frame(
+        linear_chains([3]),
+        Box(lo=np.zeros(3), lengths=np.full(3, 6.0)),
+        np.random.default_rng(0),
+    )
+    with pytest.raises(ValidationError, match="threads"):
+        radius_of_gyration(frame, threads=0)

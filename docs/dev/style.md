@@ -101,6 +101,19 @@ from polyequil.results import ObservableResult
   parameters and an obvious return; otherwise a summary line, a blank line,
   and `Parameters`, `Returns`, and `Raises` sections. Give units (LJ reduced
   units unless stated) and conventions.
+- `Raises` lists every error a caller can trigger with bad input, including
+  errors raised by the functions it calls (e.g. `ValidationError` from
+  `reciprocal_shells` for a bad `k_max`). Errors raised by a user-supplied
+  callable are noted as propagating unchanged.
+- Every public function, method, or class (a name without a leading `_`, in
+  a module without one) whose docstring has these sections also has an
+  `Examples` section: at least one doctest showing typical use. pytest runs
+  every example (`--doctest-modules`), so a stale example fails CI. Build the
+  inputs in code (files only inside a temporary directory, never
+  `trajectories/ex/`), fix any random seed, and print plain Python values
+  (`float(...)`, `.tolist()`, `round(...)`, f-strings) so the output does not
+  depend on how a NumPy version prints arrays. `tests/test_docstrings.py`
+  enforces this rule.
 
 ```python
 def msid(
@@ -130,6 +143,14 @@ def msid(
     ------
     ValidationError
         If a separation is out of range for the shortest chain.
+
+    Examples
+    --------
+    One chain of three beads on a straight line, one sigma apart:
+
+    >>> result = msid(three_bead_rod, separations=[1, 2])
+    >>> result.values.tolist()
+    [1.0, 4.0]
     """
 ```
 

@@ -92,13 +92,14 @@ check_untyped_defs = false
 # ============================================================
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "README.md"]  # README examples run as doctests
+testpaths = ["tests", "src/polyequil", "README.md"]  # docstring and README examples run as doctests
 minversion = "8.0"
 addopts = [
   "-ra",                # summarize skips/xfails/errors at the end of the run
   "--strict-config",    # unknown keys in this table are errors
   "--strict-markers",   # unregistered markers are errors
   "--doctest-glob=README.md",
+  "--doctest-modules",  # every docstring Examples section is a test
   "-m", "not slow and not gpu and not lammps",
 ]
 xfail_strict = true     # an xfail that unexpectedly passes fails the run

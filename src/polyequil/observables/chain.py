@@ -39,6 +39,32 @@ def radius_of_gyration(
     -------
     ObservableResult
         Scalar ``<R_g^2>``, averaged with equal weight over chains.
+
+    Raises
+    ------
+    ValidationError
+        If ``threads`` is less than 1.
+
+    Examples
+    --------
+    A straight three-bead rod with unit bonds has ``R_g^2 = 2/3``; the second
+    chain here crosses the periodic boundary and is unwrapped first:
+
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.observables.chain import radius_of_gyration
+    >>> from polyequil.topology import linear_chains
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+    >>> rod = np.array([[0.0, 0, 0], [1, 0, 0], [2, 0, 0]])
+    >>> wrapped = rod + [9.0, 5.0, 5.0] - [[0, 0, 0], [10, 0, 0], [10, 0, 0]]
+    >>> positions = np.vstack([rod + 5.0, wrapped])
+    >>> images = np.zeros((6, 3), dtype=np.int32)
+    >>> images[4:, 0] = 1
+    >>> topology = linear_chains([3, 3])
+    >>> config = ChainConfiguration(box, positions, images, topology, 0, 0.0)
+    >>> round(float(radius_of_gyration(config).values), 12)
+    0.666666666667
     """
     if threads < 1:
         raise ValidationError(f"threads must be >= 1, got {threads}")
