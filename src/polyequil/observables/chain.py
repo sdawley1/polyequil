@@ -39,6 +39,11 @@ def radius_of_gyration(
     -------
     ObservableResult
         Scalar ``<R_g^2>``, averaged with equal weight over chains.
+
+    Raises
+    ------
+    ValidationError
+        If ``threads`` is less than 1.
     """
     if threads < 1:
         raise ValidationError(f"threads must be >= 1, got {threads}")

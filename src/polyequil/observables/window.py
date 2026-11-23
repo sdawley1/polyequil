@@ -69,8 +69,10 @@ def window_mean(
     Raises
     ------
     ValidationError
-        If the observable is not callable, returns something other than an
-        ObservableResult, or returns incompatible results for two frames.
+        If ``window`` is not a ``WindowData``, the observable is not callable,
+        returns something other than an ObservableResult, or returns
+        incompatible results for two frames. Errors raised by
+        ``frame_observable`` propagate unchanged.
     """
     if not isinstance(window, WindowData):
         raise ValidationError(f"window must be WindowData, not {type(window).__name__}")

@@ -24,13 +24,13 @@ Entry format and rules: `docs/dev/testing.md` §6. IDs are sequential (D-001, D-
 
 ## D-003 — WP5 observable docstrings omit errors their callers can trigger
 - **Found:** 2026-11-23, while adding Examples sections to docstrings (WP11)
-- **Status:** open
+- **Status:** fixed
 - **Where:** src/polyequil/observables/extrapolation.py (`small_k_limit`, `fit_small_k`), src/polyequil/observables/structure.py (`structure_factor`, `orientational_structure_factor`), src/polyequil/observables/window.py (`window_mean`), src/polyequil/observables/chain.py (`radius_of_gyration`), src/polyequil/reciprocal.py (`collective_amplitudes`), src/polyequil/indices.py (`density_index`)
 - **Symptom:** `docs/dev/style.md` §4 requires a `Raises` section in every multi-section docstring. These functions raise `ValidationError` (directly or through `reciprocal_shells`, `segments`, `_check_threads`, `_ratio_index`, `frozen_array`) but have no `Raises` section, or one that omits a condition (`fit_small_k`: non-positive shell counts; `window_mean`: a `window` that is not `WindowData`).
 - **Repro:** `structure_factor(config, k_max=-1.0)` raises `ValidationError`, yet `structure_factor.__doc__` has no `Raises` section.
 - **Impact:** documentation only; behaviour is correct. Readers of the API reference cannot tell which inputs are rejected.
-- **Regression test:** (pending)
-- **Fix:** (pending)
+- **Regression test:** tests/test_docstrings.py::test_regression_D003_wp5_docstrings_document_raises; tests/test_structure.py::test_structure_factor_rejects_every_non_positive_or_non_finite_k_max (property, repro pinned by `@example`); each documented condition is exercised by the `test_documented_errors_are_raised` tests in test_structure.py, test_extrapolation.py, test_window.py, and test_reciprocal.py
+- **Fix:** `Raises` sections added or completed, listing every condition a caller can trigger, including those raised by callees.
 
 ## D-004 — other multi-section docstrings omit a Raises section
 - **Found:** 2026-11-23, while adding Examples sections to docstrings (WP11)

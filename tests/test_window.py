@@ -42,3 +42,12 @@ def test_incompatible_frames_raise(synthetic):
         window_mean(data, frame_observable=fx.shape_changes)
     with pytest.raises(ValidationError, match="callable"):
         window_mean(data, frame_observable="structure_factor")
+
+
+def test_documented_errors_are_raised(synthetic):
+    """The remaining conditions of the window_mean Raises section (D-003)."""
+    data = Trajectory(synthetic).window(0.0, 1.0).load()
+    with pytest.raises(ValidationError, match="WindowData"):
+        window_mean(data.frame(0), frame_observable=structure_factor, k_max=1.0)
+    with pytest.raises(ValidationError, match="ObservableResult"):
+        window_mean(data, frame_observable=lambda config, *, threads: 1.0)

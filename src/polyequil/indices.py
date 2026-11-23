@@ -104,6 +104,12 @@ def density_index(
     -------
     Estimate
         The index; zero in equilibrium.
+
+    Raises
+    ------
+    ValidationError
+        If ``density`` or ``temperature`` is not positive and finite, or any
+        value of ``kappa_t`` is not positive and finite.
     """
     scale = _positive(density, "density") * _positive(temperature, "temperature")
     return _ratio_index(s0, scale, kappa_t, "kappa_t")

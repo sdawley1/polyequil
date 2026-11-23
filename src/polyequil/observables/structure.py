@@ -76,6 +76,13 @@ def structure_factor(
     ObservableResult
         Values (S,) on axis ``k``; ``auxiliary["shell_counts"]`` holds the
         number of half-space modes per shell.
+
+    Raises
+    ------
+    ValidationError
+        If ``threads`` is not a positive int, ``k_max`` is not positive and
+        finite, no mode has 0 < |k| <= ``k_max``, or the mode count exceeds
+        ``reciprocal.MAX_DIRECT_MODES``.
     """
     _check_threads(threads)
     shells = reciprocal_shells(configuration.box, k_max, include_zero=False)
@@ -121,6 +128,14 @@ def orientational_structure_factor(
     -------
     ObservableResult
         Values (S,) on axis ``k`` with ``k[0] = 0``.
+
+    Raises
+    ------
+    ValidationError
+        If ``threads`` or ``segment_bonds`` is not a positive int, no chain is
+        long enough for one segment, a segment has zero length, ``k_max`` is
+        negative or not finite, or the mode count exceeds
+        ``reciprocal.MAX_DIRECT_MODES``.
     """
     _check_threads(threads)
     u, midpoints = segments(configuration, segment_bonds)

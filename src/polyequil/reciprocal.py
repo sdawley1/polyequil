@@ -175,6 +175,12 @@ def collective_amplitudes(
     -------
     NDArray[np.complex128]
         Amplitudes, one row per mode and one column per weight component.
+
+    Raises
+    ------
+    ValidationError
+        If ``positions`` is not a finite numeric (N, 3) array, or ``weights``
+        is not None and not of shape (N, c).
     """
     x = frozen_array(
         positions, name="positions", dtype=np.float64, shape=(None, 3), finite=True

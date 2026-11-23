@@ -70,8 +70,9 @@ def fit_small_k(
     Raises
     ------
     ValidationError
-        If the shapes differ, ``k_fit`` is not positive, or fewer than two
-        shells lie in the fit range.
+        If the shapes differ, ``k_fit`` is not positive and finite, fewer than
+        two shells lie in the fit range, or a shell count in the fit range is
+        not positive.
     """
     k_array = np.asarray(k, dtype=np.float64)
     y = np.asarray(values, dtype=np.float64)
@@ -126,6 +127,16 @@ def small_k_limit(
     ObservableResult
         Values (2,) on axis ``parameter`` = (S0, a); the convention records
         the form, weights, k_fit, the fitted shells, and the source convention.
+
+    Raises
+    ------
+    ValidationError
+        If ``k_max`` is passed, ``k_fit`` is not positive and finite, ``item``
+        is neither a ``ChainConfiguration`` nor a ``WindowData``, the
+        observable's result lacks a single ``k`` axis or
+        ``auxiliary["shell_counts"]``, fewer than two shells lie in
+        0 < k <= k_fit, or (for a window) :func:`window_mean` rejects the
+        frames. Errors raised by ``frame_observable`` propagate unchanged.
     """
     if "k_max" in parameters:
         raise ValidationError("k_max is set to k_fit; do not pass it")
