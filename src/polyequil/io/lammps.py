@@ -77,6 +77,44 @@ def read_data(path: str | Path) -> LammpsData:
     ------
     FormatError
         On a triclinic box, an unsupported atom style, or ids not ``1..n``.
+
+    Examples
+    --------
+    A three-bead chain stored wrapped across the x boundary, without image
+    flags, so they are rebuilt from the bonds:
+
+    >>> import tempfile
+    >>> from pathlib import Path
+    >>> from polyequil.io.lammps import read_data
+    >>> text = '''LAMMPS data file
+    ...
+    ... 3 atoms
+    ... 2 bonds
+    ...
+    ... 0.0 10.0 xlo xhi
+    ... 0.0 10.0 ylo yhi
+    ... 0.0 10.0 zlo zhi
+    ...
+    ... Atoms # bond
+    ...
+    ... 1 1 1 9.5 5.0 5.0
+    ... 2 1 1 0.5 5.0 5.0
+    ... 3 1 1 1.5 5.0 5.0
+    ...
+    ... Bonds
+    ...
+    ... 1 1 1 2
+    ... 2 1 2 3
+    ... '''
+    >>> folder = tempfile.TemporaryDirectory()
+    >>> path = Path(folder.name) / "chain.data"
+    >>> _ = path.write_text(text)
+    >>> data = read_data(path)
+    >>> data.topology.chain_lengths.tolist(), data.box.lengths.tolist()
+    ([3], [10.0, 10.0, 10.0])
+    >>> data.images[:, 0].tolist()
+    [0, 1, 1]
+    >>> folder.cleanup()
     """
     header, sections = _data_sections(Path(path).read_text().splitlines())
     if "xy xz yz" in header:
@@ -149,6 +187,37 @@ def iter_dump(
     ------
     ChainConfiguration
         One frame at a time; memory use is one frame.
+
+    Examples
+    --------
+    Two frames of a dimer, atoms listed in any order:
+
+    >>> import tempfile
+    >>> from pathlib import Path
+    >>> from polyequil.io.lammps import iter_dump
+    >>> from polyequil.topology import linear_chains
+    >>> frame = '''ITEM: TIMESTEP
+    ... {step}
+    ... ITEM: NUMBER OF ATOMS
+    ... 2
+    ... ITEM: BOX BOUNDS pp pp pp
+    ... 0.0 10.0
+    ... 0.0 10.0
+    ... 0.0 10.0
+    ... ITEM: ATOMS id type x y z ix iy iz
+    ... 2 1 {x2} 5.0 5.0 0 0 0
+    ... 1 1 1.0 5.0 5.0 0 0 0
+    ... '''
+    >>> folder = tempfile.TemporaryDirectory()
+    >>> path = Path(folder.name) / "dimer.dump"
+    >>> text = frame.format(step=0, x2=2.0) + frame.format(step=50, x2=2.5)
+    >>> _ = path.write_text(text)
+    >>> frames = list(iter_dump(path, linear_chains([2]), dt=0.01))
+    >>> [(f.step, f.time) for f in frames]
+    [(0, 0.0), (50, 0.5)]
+    >>> frames[1].positions[:, 0].tolist()
+    [1.0, 2.5]
+    >>> folder.cleanup()
     """
     if not dt > 0.0:
         raise FormatError(f"dt must be positive, got {dt}")

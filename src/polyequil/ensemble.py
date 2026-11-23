@@ -146,6 +146,37 @@ class TrajectoryEnsemble:
     trajectories : Iterable[Trajectory | str | Path]
         One file per independent replica. Paths must be distinct, topologies
         identical, and any ``root_seed`` attributes distinct.
+
+    Examples
+    --------
+    Two one-frame replicas of a three-bead rod, with bonds of length 1
+    (``R_g^2 = 2/3``) and 2 (``R_g^2 = 8/3``); the mean is ``5/3`` and the
+    standard error of two values ``a, b`` is ``|a - b| / 2 = 1``:
+
+    >>> import tempfile
+    >>> from pathlib import Path
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.ensemble import TrajectoryEnsemble
+    >>> from polyequil.io.hdf5 import TrajectoryWriter
+    >>> from polyequil.observables.chain import radius_of_gyration
+    >>> from polyequil.topology import linear_chains
+    >>> topology = linear_chains([3])
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+    >>> rod = np.array([[0.0, 0, 0], [1, 0, 0], [2, 0, 0]])
+    >>> images = np.zeros((3, 3), dtype=np.int32)
+    >>> folder = tempfile.TemporaryDirectory()
+    >>> paths = [Path(folder.name) / f"replica{r}.h5" for r in (1, 2)]
+    >>> for bond, path in zip((1.0, 2.0), paths):
+    ...     with TrajectoryWriter(path, topology) as writer:
+    ...         frame = ChainConfiguration(box, bond * rod, images, topology, 0, 0.0)
+    ...         writer.append(frame)
+    >>> ensemble = TrajectoryEnsemble(paths)
+    >>> result = ensemble.evaluate(radius_of_gyration)
+    >>> result.mean.round(12).tolist(), result.standard_error.round(12).tolist()
+    ([1.666666666667], [1.0])
+    >>> folder.cleanup()
     """
 
     __slots__ = ("_trajectories",)

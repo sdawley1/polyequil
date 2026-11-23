@@ -50,6 +50,22 @@ class ChainTopology:
         (n,) chain index per bead: non-decreasing and contiguous from 0.
     bead_type : ArrayLike
         (n,) integer bead type.
+
+    Examples
+    --------
+    A trimer and a dimer; bonds may be listed in any order or orientation:
+
+    >>> from polyequil.topology import ChainTopology, linear_chains
+    >>> topology = ChainTopology(
+    ...     bonds=[[4, 3], [0, 1], [1, 2]],
+    ...     angles=[[0, 1, 2]],
+    ...     chain_id=[0, 0, 0, 1, 1],
+    ...     bead_type=[1, 1, 1, 1, 1],
+    ... )
+    >>> topology.n_chains, topology.chain_lengths.tolist()
+    (2, [3, 2])
+    >>> topology == linear_chains([3, 2])
+    True
     """
 
     bonds: IntArray
@@ -145,6 +161,21 @@ class ChainTopology:
         -------
         NDArray[np.int32]
             (n, 3) image flags such that ``positions + images * L`` is whole.
+
+        Examples
+        --------
+        A chain that crosses the x boundary of a box of side 10:
+
+        >>> import numpy as np
+        >>> from polyequil.box import Box
+        >>> from polyequil.topology import linear_chains
+        >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+        >>> wrapped = np.array([[9.5, 0, 0], [0.5, 0, 0], [1.5, 0, 0]])
+        >>> images = linear_chains([3]).make_whole(wrapped, box)
+        >>> images[:, 0].tolist()
+        [0, 1, 1]
+        >>> (wrapped + images * box.lengths)[:, 0].tolist()
+        [9.5, 10.5, 11.5]
         """
         x = frozen_array(
             positions, name="positions", dtype=np.float64, shape=(self.n_beads, 3)

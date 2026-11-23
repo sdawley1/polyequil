@@ -118,6 +118,33 @@ def read_header(path: str | Path) -> TrajectoryHeader:
     ------
     FormatError
         If the schema is unknown or a required dataset is missing or ragged.
+
+    Examples
+    --------
+    >>> import tempfile
+    >>> from pathlib import Path
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.io.hdf5 import TrajectoryWriter, read_header
+    >>> from polyequil.topology import linear_chains
+    >>> topology = linear_chains([3, 2])
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+    >>> positions = np.arange(15.0).reshape(5, 3) % 10
+    >>> images = np.zeros((5, 3), dtype=np.int32)
+    >>> folder = tempfile.TemporaryDirectory()
+    >>> path = Path(folder.name) / "melt.h5"
+    >>> with TrajectoryWriter(path, topology, {"dt": 0.005}) as writer:
+    ...     for step in (0, 200, 400):
+    ...         time = 0.005 * step
+    ...         frame = ChainConfiguration(box, positions, images, topology, step, time)
+    ...         writer.append(frame)
+    >>> header = read_header(path)
+    >>> header.n_frames, header.steps.tolist()
+    (3, [0, 200, 400])
+    >>> header.topology.chain_lengths.tolist(), float(header.attrs["dt"])
+    ([3, 2], 0.005)
+    >>> folder.cleanup()
     """
     resolved = Path(path).resolve()
     with h5py.File(resolved, "r") as h5:
@@ -202,12 +229,7 @@ def read_thermo(path: str | Path) -> dict[str, NDArray[Any]]:
 class TrajectoryWriter:
     """Stream frames into a new ``polyequil-1`` HDF5 file.
 
-    Use as a context manager::
-
-        with TrajectoryWriter(path, topology, attrs) as writer:
-            for config in frames:
-                writer.append(config)
-            writer.write_thermo(columns)
+    Use as a context manager, which closes the file (see Examples).
 
     Parameters
     ----------
@@ -221,6 +243,34 @@ class TrajectoryWriter:
         Where image flags came from (``conventions.IMAGES_SOURCES``).
     overwrite : bool
         Replace an existing file.
+
+    Examples
+    --------
+    >>> import tempfile
+    >>> from pathlib import Path
+    >>> import numpy as np
+    >>> from polyequil.box import Box
+    >>> from polyequil.configuration import ChainConfiguration
+    >>> from polyequil.io.hdf5 import TrajectoryWriter, read_header
+    >>> from polyequil.topology import linear_chains
+    >>> topology = linear_chains([3])
+    >>> box = Box(lo=np.zeros(3), lengths=np.full(3, 10.0))
+    >>> rod = np.array([[0.0, 0, 0], [1, 0, 0], [2, 0, 0]])
+    >>> images = np.zeros((3, 3), dtype=np.int32)
+    >>> thermo = {"step": np.array([0, 100]), "temp": np.array([1.0, 1.0])}
+    >>> folder = tempfile.TemporaryDirectory()
+    >>> path = Path(folder.name) / "rod.h5"
+    >>> with TrajectoryWriter(path, topology, {"dt": 0.01}) as writer:
+    ...     for step in (0, 100):
+    ...         time = 0.01 * step
+    ...         frame = ChainConfiguration(box, rod, images, topology, step, time)
+    ...         writer.append(frame)
+    ...     writer.write_thermo(thermo)
+    >>> writer.frame_count
+    2
+    >>> read_header(path).times.tolist()
+    [0.0, 1.0]
+    >>> folder.cleanup()
     """
 
     def __init__(

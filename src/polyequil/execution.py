@@ -151,6 +151,12 @@ def execute(
     ------
     EnsembleError
         When a task raises (definitive index) or a worker dies (candidates).
+
+    Examples
+    --------
+    >>> from polyequil.execution import ExecutionPolicy, execute
+    >>> list(execute(ExecutionPolicy("serial"), abs, [-1, 2, -3]))
+    [(0, 1), (1, 2), (2, 3)]
     """
     if policy.mode == "serial":
         # The parent honours threads_per_worker too (D-001); otherwise BLAS
