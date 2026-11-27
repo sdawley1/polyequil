@@ -44,20 +44,20 @@ Entry format and rules: `docs/dev/testing.md` §6. IDs are sequential (D-001, D-
 
 ## D-005 — collective_amplitudes validates `modes` with an assert
 - **Found:** 2026-11-23, while documenting the errors of `collective_amplitudes` (WP11)
-- **Status:** open
+- **Status:** fixed
 - **Where:** src/polyequil/reciprocal.py (`collective_amplitudes`, the `assert mode_array.ndim == 2 ...` line)
 - **Symptom:** a public input is checked with `assert`, contrary to AGENTS.md §3 rule 5. A misshapen `modes` raises a bare `AssertionError` instead of `ValidationError`; under `python -O` the check disappears and the call fails later with an unrelated error.
 - **Repro:** `collective_amplitudes(np.zeros((2, 3)), None, Box(np.zeros(3), np.full(3, 5.0)), np.array([[1, 0]]))` → `AssertionError` (with `-O`: `IndexError: list index out of range`); expected `ValidationError` naming the shape.
 - **Impact:** error reporting only; well-formed calls (every call inside the package passes `ReciprocalShells.modes`) are unaffected.
-- **Regression test:** (none yet)
-- **Fix:** (none yet)
+- **Regression test:** tests/test_reciprocal.py::test_regression_D005_misshapen_modes_raise_validation_error; tests/test_reciprocal.py::test_modes_of_any_shape_but_m_by_3_raise_validation_error (property, repro pinned by `@example`)
+- **Fix:** `modes` is validated with `frozen_array` (integer values, shape (M, 3)) instead of the `assert`.
 
 ## D-006 — radius_of_gyration accepts non-integer `threads`
 - **Found:** 2026-11-23, while documenting the errors of `radius_of_gyration` (WP11)
-- **Status:** open
+- **Status:** fixed
 - **Where:** src/polyequil/observables/chain.py (`radius_of_gyration`)
 - **Symptom:** `threads` is checked with `threads < 1` only, unlike the structure observables' `_check_threads`: `threads=1.5` and `threads=True` are accepted, and `threads="2"` raises a bare `TypeError` instead of `ValidationError`.
 - **Repro:** `radius_of_gyration(config, threads=1.5)` returns a result; `radius_of_gyration(config, threads="2")` → `TypeError: '<' not supported between instances of 'str' and 'int'`. Expected `ValidationError` in all three cases.
 - **Impact:** error reporting only; the value of `threads` does not affect the result (single-threaded).
-- **Regression test:** (none yet)
-- **Fix:** (none yet)
+- **Regression test:** tests/test_chain_observables.py::test_regression_D006_non_integer_threads_raise_validation_error; tests/test_chain_observables.py::test_threads_that_are_not_a_positive_int_raise_validation_error (property, repros pinned by `@example`)
+- **Fix:** the structure observables' `_check_threads` moved to `polyequil.observables._validation.check_threads`, and `radius_of_gyration` now calls it.

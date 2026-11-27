@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 # ----- local -----
 from polyequil.configuration import ChainConfiguration
 from polyequil.errors import ValidationError
+from polyequil.observables._validation import check_threads
 from polyequil.results import ObservableResult
 
 # ============================================================
@@ -43,7 +44,7 @@ def radius_of_gyration(
     Raises
     ------
     ValidationError
-        If ``threads`` is less than 1.
+        If ``threads`` is not a positive int.
 
     Examples
     --------
@@ -66,8 +67,7 @@ def radius_of_gyration(
     >>> round(float(radius_of_gyration(config).values), 12)
     0.666666666667
     """
-    if threads < 1:
-        raise ValidationError(f"threads must be >= 1, got {threads}")
+    check_threads(threads)
     topology = configuration.topology
     rg2 = per_chain_rg2(configuration.unwrapped(), topology.chain_id)
     return ObservableResult(

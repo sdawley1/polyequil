@@ -194,8 +194,9 @@ def collective_amplitudes(
     Raises
     ------
     ValidationError
-        If ``positions`` is not a finite numeric (N, 3) array, or ``weights``
-        is not None and not of shape (N, c).
+        If ``positions`` is not a finite numeric (N, 3) array, ``weights`` is
+        not None and not of shape (N, c), or ``modes`` is not an integer
+        (M, 3) array.
 
     Examples
     --------
@@ -221,8 +222,9 @@ def collective_amplitudes(
     w = np.ones((n, 1)) if weights is None else np.asarray(weights, dtype=np.float64)
     if w.ndim != 2 or w.shape[0] != n:
         raise ValidationError(f"weights must have shape ({n}, c), got {w.shape}")
-    mode_array = np.asarray(modes, dtype=np.int64)
-    assert mode_array.ndim == 2 and mode_array.shape[1] == SPATIAL_DIMENSION
+    mode_array = frozen_array(
+        modes, name="modes", dtype=np.int64, shape=(None, SPATIAL_DIMENSION)
+    )
     # Phases are referenced to the origin, not box.lo, so the result is
     # exactly sum_j w_j exp(-i k.r_j); wrapping is exact for integer modes.
     fractional = x / box.lengths
