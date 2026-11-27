@@ -2,7 +2,7 @@ import itertools
 
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
@@ -127,3 +127,27 @@ def test_amplitude_documented_errors_are_raised(positions, weights, match):
     modes = reciprocal_shells(CUBE, 2.0, include_zero=False).modes
     with pytest.raises(ValidationError, match=match):
         collective_amplitudes(positions, weights, CUBE, modes)
+
+
+def test_regression_D005_misshapen_modes_raise_validation_error():
+    """D-005: a bad ``modes`` shape raises ValidationError, not AssertionError."""
+    positions = np.zeros((2, 3))
+    box = Box(np.zeros(3), np.full(3, 5.0))
+    with pytest.raises(ValidationError, match="modes"):
+        collective_amplitudes(positions, None, box, np.array([[1, 0]]))  # the repro
+    with pytest.raises(ValidationError, match="modes"):
+        collective_amplitudes(positions, None, box, np.array([1, 0, 0]))  # 1-D edge
+
+
+@given(
+    st.one_of(
+        st.tuples(st.integers(0, 4)),
+        st.tuples(st.integers(0, 4), st.sampled_from([1, 2, 4, 5])),
+        st.tuples(st.integers(0, 3), st.integers(0, 3), st.just(3)),
+    )
+)
+@example((1, 2))  # D-005 repro
+def test_modes_of_any_shape_but_m_by_3_raise_validation_error(shape):
+    modes = np.zeros(shape, dtype=np.int64)
+    with pytest.raises(ValidationError, match="modes"):
+        collective_amplitudes(np.zeros((2, 3)), None, CUBE, modes)

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 
 from polyequil.box import Box
@@ -48,3 +48,29 @@ def test_non_positive_threads_raise():
     )
     with pytest.raises(ValidationError, match="threads"):
         radius_of_gyration(frame, threads=0)
+
+
+@pytest.mark.parametrize("threads", [1.5, True, "2"])
+def test_regression_D006_non_integer_threads_raise_validation_error(threads):
+    """D-006: ``threads`` must be an int, as for the structure observables."""
+    frame = random_walk_frame(
+        linear_chains([3]),
+        Box(lo=np.zeros(3), lengths=np.full(3, 6.0)),
+        np.random.default_rng(0),
+    )
+    with pytest.raises(ValidationError, match="threads"):
+        radius_of_gyration(frame, threads=threads)
+
+
+@given(st.one_of(st.integers(max_value=0), st.floats(), st.booleans(), st.text()))
+@example(1.5)  # D-006 repros
+@example(True)
+@example("2")
+def test_threads_that_are_not_a_positive_int_raise_validation_error(threads):
+    frame = random_walk_frame(
+        linear_chains([3]),
+        Box(lo=np.zeros(3), lengths=np.full(3, 6.0)),
+        np.random.default_rng(0),
+    )
+    with pytest.raises(ValidationError, match="threads"):
+        radius_of_gyration(frame, threads=threads)

@@ -36,6 +36,7 @@ from polyequil.conventions import (
     SHELLS,
 )
 from polyequil.errors import ValidationError
+from polyequil.observables._validation import check_threads
 from polyequil.reciprocal import (
     ReciprocalShells,
     collective_amplitudes,
@@ -108,7 +109,7 @@ def structure_factor(
     >>> result.auxiliary["shell_counts"].tolist()
     [3, 6, 4, 3]
     """
-    _check_threads(threads)
+    check_threads(threads)
     shells = reciprocal_shells(configuration.box, k_max, include_zero=False)
     amplitude = collective_amplitudes(
         configuration.positions, None, configuration.box, shells.modes
@@ -183,7 +184,7 @@ def orientational_structure_factor(
     >>> round(float(result.values[0]), 12)
     0.8
     """
-    _check_threads(threads)
+    check_threads(threads)
     u, midpoints = segments(configuration, segment_bonds)
     shells = reciprocal_shells(configuration.box, k_max, include_zero=True)
     amplitude = collective_amplitudes(
@@ -213,7 +214,7 @@ def order_tensor(
     components is the anisotropy diagnostic reported with the orientational
     index (``docs/design.md`` section 3, item 4).
     """
-    _check_threads(threads)
+    check_threads(threads)
     u, _ = segments(configuration, segment_bonds)
     tensor = u.T @ u / u.shape[0] - np.eye(3) / 3.0
     return ObservableResult(
@@ -295,12 +296,6 @@ def q_components(u: NDArray[np.float64]) -> NDArray[np.float64]:
 # ============================================================
 # PRIVATE HELPERS
 # ============================================================
-
-
-def _check_threads(threads: int) -> None:
-    """Reject a non-positive thread count."""
-    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
-        raise ValidationError(f"threads must be a positive int, got {threads!r}")
 
 
 def _shell_result(
