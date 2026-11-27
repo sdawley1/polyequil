@@ -23,6 +23,14 @@ labels: bug
 
 <!-- Which results, functions, or work packages are affected? -->
 
+## Test coverage
+
+<!-- Why did the test suite not catch this? Name the gap (an input range,
+an edge case, a code path, a missing property) and the kind of test that
+would close it: unit, integration, property (Hypothesis), or exact
+reference. Writing the test is optional here; the fix will need a
+test_regression_D### test (docs/dev/testing.md §1). -->
+
 ## Environment
 
 - polyequil version or commit:

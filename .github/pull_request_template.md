@@ -11,7 +11,7 @@
 - [ ] `uv run ruff format --check . && uv run ruff check .`
 - [ ] `uv run mypy`
 - [ ] `uv run pytest`
-- [ ] `uv run sphinx-build -W docs docs/_build/html` (if docs or docstrings changed)
+- [ ] `uv run --group docs sphinx-build -W docs docs/_build/html` (if docs or docstrings changed)
 - [ ] New numerical code has a Hypothesis property test and an exact-reference test (`docs/dev/testing.md`)
 
 ## Assumptions and physics choices to review
